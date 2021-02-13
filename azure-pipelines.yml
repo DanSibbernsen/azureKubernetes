@@ -1,4 +1,3 @@
-
 # Starter pipeline
 # Start with a minimal pipeline that you can customize to build and deploy your code.
 # Add steps that build, run tests, deploy, and more:
@@ -6,13 +5,75 @@
 
 trigger: none
 
+parameters:
+
+- name: workspaceSelection
+  displayName: Terraform Workspace Selection
+  type: string
+  default: dev
+  values:
+  - dev
+  - staging
+  - prod
+
+- name: terraformOperation
+  displayName: Terraform Operation to perform
+  type: string
+  default: apply
+  values:
+    - apply
+    - destroy
+    - plan
 
 jobs:
-- job: fun
-  displayName: Fun!
+- job: Terraform_${{parameters.terraformOperation}}
+  displayName: Terraform ${{parameters.terraformOperation}}
   pool:
     vmImage: 'ubuntu-latest'
   steps:
+  - task: TerraformInstaller@0
+    displayName: Terraform Install
+    inputs:
+      terraformVersion: '0.14.4'
+
+  - task: TerraformTaskV1@0
+    displayName: Terraform init
+    inputs:
+      provider: 'azurerm'
+      command: 'init'
+      backendServiceArm: 'Subscription-scoped-ARM'
+      backendAzureRmResourceGroupName: 'tfresourcegroup'
+      backendAzureRmStorageAccountName: 'tfresourcegroup'
+      backendAzureRmContainerName: 'tfstate'
+      backendAzureRmKey: 'tfstate'
+
   - task: CmdLine@2
     inputs:
-      script: 'echo Hello_World'
+      script: 'terraform workspace select ${{ parameters.workspaceSelection }} || terraform workspace new ${{ parameters.workspaceSelection }}'
+
+  - task: TerraformTaskV1@0
+    displayName: Terraform validate
+    inputs:
+      provider: 'azurerm'
+      command: 'validate'
+    env:
+      TF_WORKSPACE: ${{ parameters.workspaceSelection }}
+
+  - task: TerraformTaskV1@0
+    displayName: Terraform plan
+    condition: eq('${{parameters.terraformOperation}}', 'apply')
+    inputs:
+      provider: 'azurerm'
+      command: 'plan'
+      environmentServiceNameAzureRM: 'Subscription-scoped-ARM'
+    env:
+      TF_WORKSPACE: ${{ parameters.workspaceSelection }}
+
+  - task: TerraformTaskV1@0
+    displayName: Terraform ${{parameters.terraformOperation}}
+    inputs:
+      provider: 'azurerm'
+      command: '${{parameters.terraformOperation}}'
+      environmentServiceNameAzureRM: 'Subscription-scoped-ARM'
+    env:
+      TF_WORKSPACE: ${{ parameters.workspaceSelection }}
