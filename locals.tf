@@ -30,11 +30,11 @@ locals {
   }
 
   resource_group_list = {
-    default = "test"
-    dev     = "test"
+    default = "tfkubernetes"
+    dev     = "tfkubernetes"
   }
 
-  cluster_name                      = "threeTierSample-aks-${local.env}"
+  cluster_name                      = "aks-${local.env}"
   default_node_pool                 = lookup(local.default_node_pool_list, local.env)
   location                          = lookup(local.region_list, local.env)
   resource_group                    = lookup(local.resource_group_list, local.env)
